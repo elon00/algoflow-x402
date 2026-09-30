@@ -1,0 +1,10 @@
+{
+  "network": "mainnet",
+  "deployer": "TPLMGGFNG64LKOCKVB7ZMQH5AMSNMV4GLI7GCH4FY2XQEKSIGB77O6LCFM",
+  "qalgo_asset_id": 3726918206,
+  "asset_creation_txid": "A45T3HSKJLCWXM3INMMPVTNZ7SCXLUDKSZQAOAXHU5EUN3SESY5A",
+  "confirmed_round": 65534428,
+  "algod": "https://mainnet-api.algonode.cloud",
+  "explorer_asset_url": "https://explorer.perawallet.app/asset/3726918206",
+  "explorer_tx_url": "https://explorer.perawallet.app/tx/A45T3HSKJLCWXM3INMMPVTNZ7SCXLUDKSZQAOAXHU5EUN3SESY5A"
+}

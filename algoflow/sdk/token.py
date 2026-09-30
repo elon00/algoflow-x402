@@ -34,7 +34,7 @@ class QmoosaAlgoTokenManager:
 
     def __init__(self, client: Optional[AlgorandNetworkClient] = None, asset_id: Optional[int] = None):
         self.client = client or AlgorandNetworkClient()
-        self.asset_id = asset_id or 10482900  # Default MainNet asset ID reference or live created ID
+        self.asset_id = asset_id or 3726918206  # Live Confirmed Algorand MainNet QALGO Asset ID
         self._total_emitted = 25_000_000_000_000  # 25,000,000 QALGO initially circulating
         self._total_burned = 1_250_000_000_000    # 1,250,000 QALGO burned via x402 gateway fees
 
