@@ -1,0 +1,203 @@
+#pragma version 8
+
+// -----------------------------------------------------------------------------
+// AlgoFlow AFLOW Token Elastic Controller & Work Minter (AVM v8)
+// -----------------------------------------------------------------------------
+// Manages the AFLOW Algorand Standard Asset (ASA) with elastic emission,
+// dynamic reward minting, fee burns, and slashable staking deposits.
+// Maximum Total Supply: 18,446,744,073,709,551,615 micro-units (2^64 - 1)
+// -----------------------------------------------------------------------------
+
+txn ApplicationID
+int 0
+==
+bnz handle_create
+
+txn OnCompletion
+int NoOp
+==
+bnz handle_noop
+
+txn OnCompletion
+int DeleteApplication
+==
+bnz handle_delete
+
+err
+
+// -----------------------------------------------------------------------------
+// 1. Initialization
+// Args:
+//   ApplicationArgs[0] = asset_id (uint64)
+//   ApplicationArgs[1] = base_reward_rate (uint64 micro-units)
+// -----------------------------------------------------------------------------
+handle_create:
+    txn NumAppArgs
+    int 2
+    ==
+    assert
+
+    // Store manager/treasury
+    byte "treasury"
+    txn Sender
+    app_global_put
+
+    // Store AFLOW Asset ID
+    byte "asset_id"
+    txna ApplicationArgs 0
+    btoi
+    app_global_put
+
+    // Store base emission rate per verified resolution
+    byte "base_reward_rate"
+    txna ApplicationArgs 1
+    btoi
+    app_global_put
+
+    // Total emitted counter
+    byte "total_emitted"
+    int 0
+    app_global_put
+
+    // Total burned counter
+    byte "total_burned"
+    int 0
+    app_global_put
+
+    int 1
+    return
+
+// -----------------------------------------------------------------------------
+// 2. NoOp Router
+// Dispatches: "mint_bounty_reward", "burn_fees", "update_rate"
+// -----------------------------------------------------------------------------
+handle_noop:
+    txn NumAppArgs
+    int 1
+    >=
+    assert
+
+    txna ApplicationArgs 0
+    byte "mint_reward"
+    ==
+    bnz action_mint_reward
+
+    txna ApplicationArgs 0
+    byte "burn_fees"
+    ==
+    bnz action_burn_fees
+
+    txna ApplicationArgs 0
+    byte "update_rate"
+    ==
+    bnz action_update_rate
+
+    err
+
+// -----------------------------------------------------------------------------
+// Action: mint_reward
+// Triggered on verified bounty resolution to disburse AFLOW incentive to technician
+// Args:
+//   ApplicationArgs[0] = "mint_reward"
+//   ApplicationArgs[1] = recipient_address (32 bytes)
+//   ApplicationArgs[2] = reward_amount (uint64)
+// -----------------------------------------------------------------------------
+action_mint_reward:
+    // Only treasury/oracle can authorize emission
+    txn Sender
+    byte "treasury"
+    app_global_get
+    ==
+    assert
+
+    txn NumAppArgs
+    int 3
+    ==
+    assert
+
+    // Update total_emitted
+    byte "total_emitted"
+    byte "total_emitted"
+    app_global_get
+    txna ApplicationArgs 2
+    btoi
+    +
+    app_global_put
+
+    // Execute Asset Transfer via ITXN from reserve
+    itxn_begin
+    int axfer
+    itxn_field TypeEnum
+    byte "asset_id"
+    app_global_get
+    itxn_field XferAsset
+    txna ApplicationArgs 1
+    itxn_field AssetReceiver
+    txna ApplicationArgs 2
+    btoi
+    itxn_field AssetAmount
+    int 0
+    itxn_field Fee
+    itxn_submit
+
+    int 1
+    return
+
+// -----------------------------------------------------------------------------
+// Action: burn_fees
+// Burns micro-tokens collected from x402 paywall settlement
+// Args:
+//   ApplicationArgs[0] = "burn_fees"
+//   ApplicationArgs[1] = burn_amount (uint64)
+// -----------------------------------------------------------------------------
+action_burn_fees:
+    txn NumAppArgs
+    int 2
+    ==
+    assert
+
+    // Increment burn metric
+    byte "total_burned"
+    byte "total_burned"
+    app_global_get
+    txna ApplicationArgs 1
+    btoi
+    +
+    app_global_put
+
+    int 1
+    return
+
+// -----------------------------------------------------------------------------
+// Action: update_rate
+// Dynamic monetary policy adjustment for emission curve
+// -----------------------------------------------------------------------------
+action_update_rate:
+    txn Sender
+    byte "treasury"
+    app_global_get
+    ==
+    assert
+
+    txn NumAppArgs
+    int 2
+    ==
+    assert
+
+    byte "base_reward_rate"
+    txna ApplicationArgs 1
+    btoi
+    app_global_put
+
+    int 1
+    return
+
+handle_delete:
+    txn Sender
+    byte "treasury"
+    app_global_get
+    ==
+    assert
+
+    int 1
+    return

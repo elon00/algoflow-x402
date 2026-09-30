@@ -1,0 +1,330 @@
+#pragma version 8
+
+// -----------------------------------------------------------------------------
+// AlgoFlow x402 Bounty Escrow Smart Contract (AVM v8)
+// -----------------------------------------------------------------------------
+// Global State Schema:
+//   - "creator"        : bytes (32-byte reporter account address)
+//   - "bounty_id"      : bytes (unique string/UUID identifier)
+//   - "amount"         : uint64 (bounty value in microAlgos)
+//   - "deadline"       : uint64 (round after which creator can claim refund)
+//   - "status"         : uint64 (0: OPEN, 1: CLAIMED, 2: RESOLVED, 3: CLOSED, 4: REFUNDED)
+//   - "technician"     : bytes (32-byte claimed technician account address)
+//   - "evidence_hash"  : bytes (32-byte SHA-256 hash of completion evidence)
+// -----------------------------------------------------------------------------
+
+// Route App Creation
+txn ApplicationID
+int 0
+==
+bnz handle_create
+
+// Reject all special on_completion calls except NoOp and DeleteApplication
+txn OnCompletion
+int NoOp
+==
+bnz handle_noop
+
+txn OnCompletion
+int DeleteApplication
+==
+bnz handle_delete
+
+// Reject OptIn, CloseOut, UpdateApplication
+err
+
+// -----------------------------------------------------------------------------
+// 1. App Creation
+// Args:
+//   ApplicationArgs[0] = bounty_id (bytes)
+//   ApplicationArgs[1] = amount (uint64 big-endian bytes)
+//   ApplicationArgs[2] = deadline_round (uint64 big-endian bytes)
+// -----------------------------------------------------------------------------
+handle_create:
+    txn NumAppArgs
+    int 3
+    ==
+    assert
+
+    // Store creator address
+    byte "creator"
+    txn Sender
+    app_global_put
+
+    // Store bounty_id
+    byte "bounty_id"
+    txna ApplicationArgs 0
+    app_global_put
+
+    // Store amount in microAlgos
+    byte "amount"
+    txna ApplicationArgs 1
+    btoi
+    app_global_put
+
+    // Store deadline round
+    byte "deadline"
+    txna ApplicationArgs 2
+    btoi
+    app_global_put
+
+    // Initialize status to OPEN (0)
+    byte "status"
+    int 0
+    app_global_put
+
+    // Initialize technician to zero address
+    byte "technician"
+    global ZeroAddress
+    app_global_put
+
+    // Initialize evidence_hash to empty bytes
+    byte "evidence_hash"
+    byte ""
+    app_global_put
+
+    int 1
+    return
+
+// -----------------------------------------------------------------------------
+// 2. Application Call Router (NoOp)
+// Inspects ApplicationArgs[0] to dispatch to corresponding action
+// -----------------------------------------------------------------------------
+handle_noop:
+    txn NumAppArgs
+    int 1
+    >=
+    assert
+
+    // Dispatch "fund"
+    txna ApplicationArgs 0
+    byte "fund"
+    ==
+    bnz action_fund
+
+    // Dispatch "claim"
+    txna ApplicationArgs 0
+    byte "claim"
+    ==
+    bnz action_claim
+
+    // Dispatch "resolve"
+    txna ApplicationArgs 0
+    byte "resolve"
+    ==
+    bnz action_resolve
+
+    // Dispatch "release"
+    txna ApplicationArgs 0
+    byte "release"
+    ==
+    bnz action_release
+
+    // Dispatch "refund"
+    txna ApplicationArgs 0
+    byte "refund"
+    ==
+    bnz action_refund
+
+    // Unknown action
+    err
+
+// -----------------------------------------------------------------------------
+// Action: fund
+// Group Transaction requirement:
+//   gtxn 0: Pay transaction from creator to contract application address
+//   gtxn 1: App call "fund"
+// -----------------------------------------------------------------------------
+action_fund:
+    // Only creator can fund
+    txn Sender
+    byte "creator"
+    app_global_get
+    ==
+    assert
+
+    // Status must be OPEN (0)
+    byte "status"
+    app_global_get
+    int 0
+    ==
+    assert
+
+    int 1
+    return
+
+// -----------------------------------------------------------------------------
+// Action: claim
+// Technician claims the open bounty
+// -----------------------------------------------------------------------------
+action_claim:
+    // Verify status is OPEN (0)
+    byte "status"
+    app_global_get
+    int 0
+    ==
+    assert
+
+    // Assign technician to caller
+    byte "technician"
+    txn Sender
+    app_global_put
+
+    // Advance status to CLAIMED (1)
+    byte "status"
+    int 1
+    app_global_put
+
+    int 1
+    return
+
+// -----------------------------------------------------------------------------
+// Action: resolve
+// Technician submits completion proof hash
+// Args:
+//   ApplicationArgs[0] = "resolve"
+//   ApplicationArgs[1] = SHA-256 evidence hash (bytes)
+// -----------------------------------------------------------------------------
+action_resolve:
+    txn NumAppArgs
+    int 2
+    ==
+    assert
+
+    // Verify status is CLAIMED (1)
+    byte "status"
+    app_global_get
+    int 1
+    ==
+    assert
+
+    // Caller must be the assigned technician
+    txn Sender
+    byte "technician"
+    app_global_get
+    ==
+    assert
+
+    // Store evidence hash
+    byte "evidence_hash"
+    txna ApplicationArgs 1
+    app_global_put
+
+    // Advance status to RESOLVED (2)
+    byte "status"
+    int 2
+    app_global_put
+
+    int 1
+    return
+
+// -----------------------------------------------------------------------------
+// Action: release
+// Creator verifies the work and triggers atomic payout to technician via ITXN
+// -----------------------------------------------------------------------------
+action_release:
+    // Verify caller is creator
+    txn Sender
+    byte "creator"
+    app_global_get
+    ==
+    assert
+
+    // Verify status is RESOLVED (2)
+    byte "status"
+    app_global_get
+    int 2
+    ==
+    assert
+
+    // Execute Inner Transaction to payout technician
+    itxn_begin
+    int pay
+    itxn_field TypeEnum
+    byte "technician"
+    app_global_get
+    itxn_field Receiver
+    byte "amount"
+    app_global_get
+    itxn_field Amount
+    int 0
+    itxn_field Fee
+    itxn_submit
+
+    // Advance status to CLOSED (3)
+    byte "status"
+    int 3
+    app_global_put
+
+    int 1
+    return
+
+// -----------------------------------------------------------------------------
+// Action: refund
+// Creator requests refund if deadline expired and bounty remains unclosed
+// -----------------------------------------------------------------------------
+action_refund:
+    // Verify caller is creator
+    txn Sender
+    byte "creator"
+    app_global_get
+    ==
+    assert
+
+    // Verify current round has passed the deadline
+    global Round
+    byte "deadline"
+    app_global_get
+    >
+    assert
+
+    // Bounty must not already be closed (3) or refunded (4)
+    byte "status"
+    app_global_get
+    int 3
+    <
+    assert
+
+    // Refund remaining balance to creator via Inner Transaction
+    itxn_begin
+    int pay
+    itxn_field TypeEnum
+    byte "creator"
+    app_global_get
+    itxn_field Receiver
+    byte "creator"
+    app_global_get
+    itxn_field CloseRemainderTo
+    int 0
+    itxn_field Amount
+    int 0
+    itxn_field Fee
+    itxn_submit
+
+    // Advance status to REFUNDED (4)
+    byte "status"
+    int 4
+    app_global_put
+
+    int 1
+    return
+
+// -----------------------------------------------------------------------------
+// 3. Delete Application
+// Only creator can delete application after completion or refund
+// -----------------------------------------------------------------------------
+handle_delete:
+    txn Sender
+    byte "creator"
+    app_global_get
+    ==
+    assert
+
+    byte "status"
+    app_global_get
+    int 3
+    >=
+    assert
+
+    int 1
+    return

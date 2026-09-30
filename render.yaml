@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: qmoosa-algoflow
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn algoflow.api.app:app --host 0.0.0.0 --port $PORT
+    plan: free
+    region: oregon
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ALGORAND_NETWORK
+        value: mainnet
+      - key: ALGOD_URL
+        value: https://mainnet-api.algonode.cloud
+      - key: INDEXER_URL
+        value: https://mainnet-idx.algonode.cloud
+      - key: DEMO_MODE
+        value: "true"
+      - key: RECEIVER_ADDRESS
+        value: MW6XFO4NJPVM4DW2VO3NGD3NBSOMEBVLQOVLNGAJOHASMDLGZBUJPOWWIA

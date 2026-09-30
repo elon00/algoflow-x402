@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlgoFlow x402 | Algorand Autonomous Escrow & Microsettlement Protocol</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo-group">
+        <div class="logo-icon">₳</div>
+        <div>
+          <div class="logo-title">Qmoosa AlgoFlow x402</div>
+          <div class="logo-sub">Algorand Autonomous Escrow • Qmoosa Algo ($QALGO)</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="network-badge" id="networkBadge">
+          <div class="pulse-dot"></div>
+          <span id="networkName">MAINNET</span>
+          <span style="opacity:0.6;">|</span>
+          <span id="roundNumber">Round: Syncing...</span>
+        </div>
+        <button class="btn btn-outline btn-sm" id="switchNetworkBtn">Switch Network</button>
+        <a href="/docs" target="_blank" class="btn btn-outline btn-sm">API Docs</a>
+        <a href="https://github.com/elon00/algoflow-x402" target="_blank" class="btn btn-primary btn-sm">GitHub</a>
+      </div>
+    </header>
+
+    <!-- Top Key Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Blockchain Consensus</div>
+        <div class="stat-value" id="consensusVal">Algorand AVM v8</div>
+        <div class="stat-sub">Pure Proof of Stake • ~2.9s Finality</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active Round Height</div>
+        <div class="stat-value" id="statRound">—</div>
+        <div class="stat-sub" id="statLatency">Latency: measuring...</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active Escrow Value</div>
+        <div class="stat-value" id="statEscrow">195.0 ALGO</div>
+        <div class="stat-sub">Locked in Smart Contract Escrow</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Payment Standard</div>
+        <div class="stat-value">RFC HTTP 402</div>
+        <div class="stat-sub">Machine-to-Machine Microtransactions</div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tab-bounties">Bounties & Escrow</button>
+      <button class="tab-btn" data-tab="tab-x402">x402 Protocol Inspector</button>
+      <button class="tab-btn" data-tab="tab-token">Qmoosa Algo Token ($QALGO)</button>
+      <button class="tab-btn" data-tab="tab-contract">MainNet Smart Contract</button>
+      <button class="tab-btn" data-tab="tab-wallet">Algorand Wallet & Key Tool</button>
+    </div>
+
+    <!-- TAB 1: Bounties & Escrow -->
+    <div class="tab-content active" id="tab-bounties">
+      <div class="bounties-header">
+        <div>
+          <h2 style="font-size:20px; font-weight:700;">Operational Issue Bounties</h2>
+          <p style="color:var(--text-muted); font-size:13px;">Smart contract escrow ensures funds are committed on-chain and disbursed only upon verified resolution.</p>
+        </div>
+        <button class="btn btn-primary" id="openCreateModalBtn">+ Create New Bounty</button>
+      </div>
+
+      <div id="bountiesList">
+        <!-- Rendered by app.js -->
+        <div style="padding:40px; text-align:center; color:var(--text-muted);">Loading live bounties from Algorand ledger...</div>
+      </div>
+    </div>
+
+    <!-- TAB 2: x402 Protocol Inspector -->
+    <div class="tab-content" id="tab-x402">
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:20px; font-weight:700;">x402 Algorand Protocol Inspector</h2>
+        <p style="color:var(--text-muted); font-size:13px;">Test native HTTP 402 Payment Required microtransactions over Algorand. Accessing protected endpoints without an on-chain transaction returns standard 402 headers and payment QR URIs.</p>
+      </div>
+
+      <div class="inspector-layout">
+        <!-- Left: Control Panel -->
+        <div class="panel">
+          <div class="panel-title">
+            <span>⚙️</span> Request Controller
+          </div>
+
+          <div class="form-group">
+            <label>Select Protected Microservice</label>
+            <select id="x402Endpoint">
+              <option value="/api/protected/diagnostics">IoT Diagnostics (Cost: 0.01 ALGO / 10,000 µALGO)</option>
+              <option value="/api/protected/ai-triage">Neural AI Triage (Cost: 0.05 ALGO / 50,000 µALGO)</option>
+              <option value="/api/protected/audit-report">Cryptographic Audit Trail (Cost: 0.10 ALGO / 100,000 µALGO)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Custom Query Parameter</label>
+            <input type="text" id="x402Param" value="HVAC-UNIT-42" placeholder="e.g. Asset ID or Issue description">
+          </div>
+
+          <div style="display:flex; gap:12px; margin-bottom:20px;">
+            <button class="btn btn-outline" id="sendUnpaidBtn" style="flex:1;">
+              1. Send Unpaid Request
+            </button>
+            <button class="btn btn-primary" id="sendPaidBtn" style="flex:1;">
+              2. Pay & Unlock
+            </button>
+          </div>
+
+          <div class="form-group">
+            <label>Simulated or Real Algorand TXID</label>
+            <input type="text" id="customTxid" placeholder="Paste 52-char Algorand TXID or click Pay & Unlock">
+          </div>
+
+          <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border-color); border-radius:8px; padding:14px; font-size:12px;">
+            <div style="color:var(--accent-cyan); font-weight:700; margin-bottom:6px;">HOW x402 FOR ALGORAND WORKS:</div>
+            <ol style="padding-left:18px; color:var(--text-muted); line-height:1.6;">
+              <li>Client requests resource without authorization.</li>
+              <li>Server returns <strong>HTTP 402 Payment Required</strong> with <code>WWW-Authenticate</code>, <code>X-402-Amount</code>, <code>X-402-Receiver</code>, and <code>algorand://</code> URI.</li>
+              <li>Client signs payment transaction with cryptographic challenge in the <code>note</code> field.</li>
+              <li>Client retries request with header <code>X-402-Payment-Authorization: txid=&lt;TXID&gt;</code>.</li>
+              <li>Server verifies transaction on Algorand node/indexer and returns <strong>HTTP 200 OK</strong>.</li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- Right: Inspector Response Console -->
+        <div class="panel">
+          <div class="panel-title" style="justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span>📡</span> Live HTTP Exchange
+            </div>
+            <span id="responseStatusTag" class="status-tag" style="display:none;"></span>
+          </div>
+
+          <label>Response Headers</label>
+          <div class="code-box" id="responseHeadersBox" style="max-height:160px; margin-bottom:14px;">(Awaiting request...)</div>
+
+          <label>Response Payload</label>
+          <div class="code-box" id="responseBodyBox" style="max-height:260px;">(Click "Send Unpaid Request" to inspect HTTP 402 payload)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Qmoosa Algo Token ($QALGO) -->
+    <div class="tab-content" id="tab-token">
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:20px; font-weight:700;">Qmoosa Algo ($QALGO) Tokenomics & Utility Exchange</h2>
+        <p style="color:var(--text-muted); font-size:13px;">Algorand MainNet Standard Asset (ASA) with unlimited elastic supply, Proof of Resolution work rewards, deflationary fee burns, and direct service redemption.</p>
+      </div>
+
+      <!-- Token Metrics Cards -->
+      <div class="stats-grid" style="margin-bottom:20px;">
+        <div class="stat-card">
+          <div class="stat-label">Max AVM Supply Ceiling</div>
+          <div class="stat-value" id="tokenMaxSupply">18.44T QALGO</div>
+          <div class="stat-sub">Unlimited Elastic Emission (2⁶⁴ - 1 units)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Circulating Supply</div>
+          <div class="stat-value" id="tokenCirculating">23.75M QALGO</div>
+          <div class="stat-sub">Proof of Resolution Emission</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Permanently Burned</div>
+          <div class="stat-value" id="tokenBurned" style="color:var(--accent-rose);">1.25M QALGO</div>
+          <div class="stat-sub">50% x402 & Service Exchange Burn</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">MainNet Asset ID</div>
+          <div class="stat-value" id="tokenAssetId">#10482900</div>
+          <div class="stat-sub"><a href="https://explorer.perawallet.app/" target="_blank" style="color:var(--accent-cyan); text-decoration:none;">View in Pera Explorer ↗</a></div>
+        </div>
+      </div>
+
+      <div class="inspector-layout">
+        <!-- Participant Allowance Faucet -->
+        <div class="panel">
+          <div class="panel-title">
+            <span>🎁</span> Participant Transaction Allowance Faucet
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">
+            All users, reporters, and service providers receive a free starting allocation of QALGO tokens to sponsor transaction fees, opt-ins, and initial service usage.
+          </p>
+
+          <div class="form-group">
+            <label>Recipient Algorand Address</label>
+            <input type="text" id="faucetAddress" placeholder="Paste your 58-character Algorand address...">
+          </div>
+
+          <div class="form-group">
+            <label>Participant Role</label>
+            <select id="faucetRole">
+              <option value="SERVICE_PROVIDER">Service Provider / Field Technician (25 QALGO)</option>
+              <option value="USER">Facility Client / Reporter (10 QALGO)</option>
+              <option value="TRANSACTION_SUBSIDY">Microtransaction Gas Subsidy (5 QALGO)</option>
+            </select>
+          </div>
+
+          <button class="btn btn-primary" id="claimFaucetBtn" style="width:100%; margin-bottom:14px;">
+            Claim QALGO Allowance
+          </button>
+
+          <div class="code-box" id="faucetResultBox" style="max-height:140px;">(Click Claim to disburse transaction allowance)</div>
+        </div>
+
+        <!-- Token Use-Case Service Exchange -->
+        <div class="panel">
+          <div class="panel-title">
+            <span>🔄</span> Token Use-Case Exchange Marketplace
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">
+            Exchange and redeem your earned QALGO tokens directly for operational platform services. 50% of exchanged tokens are automatically burned.
+          </p>
+
+          <div class="form-group">
+            <label>Select Service to Unlock</label>
+            <select id="exchangeServiceSelect">
+              <option value="IOT_DIAGNOSTICS">IoT Telemetry & Vibrational FFT (Cost: 10 QALGO)</option>
+              <option value="AI_TRIAGE">Neural AI Triage & OEM Part Matcher (Cost: 50 QALGO)</option>
+              <option value="AUDIT_TRAIL">Cryptographic Compliance Audit Trail (Cost: 100 QALGO)</option>
+              <option value="PRIORITY_SLA">Priority SLA Fast-Track Dispatch (Cost: 250 QALGO)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Your Algorand Wallet Address</label>
+            <input type="text" id="exchangeAddress" placeholder="Your Algorand address for service license...">
+          </div>
+
+          <button class="btn btn-primary" id="exchangeServiceBtn" style="width:100%; margin-bottom:14px;">
+            Exchange Tokens & Unlock Service
+          </button>
+
+          <div class="code-box" id="exchangeResultBox" style="max-height:140px;">(Select service and click Exchange Tokens)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: MainNet Smart Contract -->
+    <div class="tab-content" id="tab-contract">
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:20px; font-weight:700;">Algorand MainNet Smart Contract (AVM v8)</h2>
+        <p style="color:var(--text-muted); font-size:13px;">AlgoFlow Escrow bytecode executed on the Algorand Virtual Machine with native Inner Transactions (ITXN) and atomic payouts.</p>
+      </div>
+
+      <div class="inspector-layout">
+        <div class="panel">
+          <div class="panel-title">Contract Specifications</div>
+          <div style="font-size:13px; color:var(--text-muted); line-height:1.8;">
+            <p><strong>Target Network:</strong> <span style="color:var(--accent-green);">Algorand MainNet (mainnet-v1.0)</span></p>
+            <p><strong>AVM Architecture:</strong> Version 8 with Inner Payment Transactions</p>
+            <p><strong>Approval Program Hash:</strong> <code style="color:var(--accent-cyan);">AJBHNJ75KID376GPLTF25YMX7BN6YNQ5ICRYS56OFQQFCPP5Y35KRWPNY4</code></p>
+            <p><strong>Clear State Hash:</strong> <code style="color:var(--accent-cyan);">OHV4S2PM4R3XXXQOIKERQ6OV2OYRZZG6A66XSUVR5ADF4NXVPEZRXMYYQE</code></p>
+            <p><strong>Global Schema:</strong> 4 Byte Slices (creator, bounty_id, technician, evidence_hash), 3 Uints (amount, deadline, status)</p>
+            <p><strong>State Transitions:</strong> OPEN (0) → CLAIMED (1) → RESOLVED (2) → CLOSED (3) / REFUNDED (4)</p>
+          </div>
+          <div style="margin-top:20px; display:flex; gap:10px;">
+            <a href="https://explorer.perawallet.app/" target="_blank" class="btn btn-outline btn-sm">Pera Explorer (MainNet)</a>
+            <a href="https://allo.info/" target="_blank" class="btn btn-outline btn-sm">Allo.info Explorer</a>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Approval TEAL Source Code</div>
+          <div class="code-box" id="tealSourceBox" style="max-height:400px;">#pragma version 8
+// AlgoFlow x402 Bounty Escrow Smart Contract (AVM v8)
+// Verifies atomic claim, SHA-256 evidence commit, and ITXN payout
+
+txn ApplicationID
+int 0
+==
+bnz handle_create
+
+txn OnCompletion
+int NoOp
+==
+bnz handle_noop
+
+txn OnCompletion
+int DeleteApplication
+==
+bnz handle_delete
+
+err
+
+handle_create:
+    txn NumAppArgs
+    int 3
+    ==
+    assert
+    byte "creator"
+    txn Sender
+    app_global_put
+    byte "bounty_id"
+    txna ApplicationArgs 0
+    app_global_put
+    byte "amount"
+    txna ApplicationArgs 1
+    btoi
+    app_global_put
+    byte "deadline"
+    txna ApplicationArgs 2
+    btoi
+    app_global_put
+    byte "status"
+    int 0
+    app_global_put
+    int 1
+    return
+... [Full compiled bytecode deployed on MainNet]</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: Algorand Wallet Tool -->
+    <div class="tab-content" id="tab-wallet">
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:20px; font-weight:700;">Algorand Key Generator & On-Chain Explorer</h2>
+        <p style="color:var(--text-muted); font-size:13px;">Generate fresh 25-word Algorand keypairs, check live on-chain balances, and test smart contract interactions.</p>
+      </div>
+
+      <div class="inspector-layout">
+        <div class="panel">
+          <div class="panel-title">Keypair Generator</div>
+          <button class="btn btn-primary" id="generateKeyBtn" style="margin-bottom:16px;">Generate New Algorand Account</button>
+          
+          <div class="form-group">
+            <label>Public Address (58 Characters)</label>
+            <input type="text" id="genAddress" readonly placeholder="Click Generate above...">
+          </div>
+
+          <div class="form-group">
+            <label>25-Word Cryptographic Mnemonic (Private Key)</label>
+            <textarea id="genMnemonic" rows="3" readonly placeholder="Words will appear here..."></textarea>
+          </div>
+          <p style="font-size:11px; color:var(--accent-amber);">⚠️ Security Notice: Never share MainNet private keys. Use TestNet faucet for risk-free sandbox testing.</p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">On-Chain Balance Lookup</div>
+          <div class="form-group">
+            <label>Algorand Address</label>
+            <input type="text" id="checkAddressInput" placeholder="Paste any Algorand address...">
+          </div>
+          <button class="btn btn-outline" id="checkBalanceBtn" style="margin-bottom:16px;">Query Live Node</button>
+
+          <div class="code-box" id="balanceResultBox" style="max-height:220px;">(Enter address and click Query Live Node)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Bounty Modal -->
+    <div class="modal-overlay" id="createModal">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3 style="font-size:18px; font-weight:700;">Create Operational Bounty</h3>
+          <button class="close-btn" id="closeCreateModalBtn">&times;</button>
+        </div>
+        <form id="createBountyForm">
+          <div class="form-group">
+            <label>Issue Title</label>
+            <input type="text" id="formTitle" required placeholder="e.g. Water Chiller Pump Pressure Drop">
+          </div>
+          <div class="form-group">
+            <label>Description & Scope</label>
+            <textarea id="formDesc" rows="3" required placeholder="Detailed failure symptoms, required parts, SLA..."></textarea>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label>Category</label>
+              <select id="formCategory">
+                <option value="HVAC">HVAC & Climate</option>
+                <option value="ELECTRICAL">Electrical & Power</option>
+                <option value="ELEVATOR">Elevators & Lifts</option>
+                <option value="PLUMBING">Plumbing & Fluids</option>
+                <option value="NETWORK">Network & Telecom</option>
+                <option value="SECURITY">Security & Access</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Priority</label>
+              <select id="formPriority">
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="CRITICAL">Critical</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label>Location</label>
+              <input type="text" id="formLocation" value="Main Campus, Building A" required>
+            </div>
+            <div class="form-group">
+              <label>Bounty Reward (ALGO)</label>
+              <input type="number" id="formAmount" min="0.1" step="0.1" value="25.0" required>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <button type="button" class="btn btn-outline" id="cancelCreateModalBtn">Cancel</button>
+            <button type="submit" class="btn btn-primary">Commit Bounty to Escrow</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
