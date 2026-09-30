@@ -29,10 +29,10 @@ jobs:
           python-version: '3.11'
           cache: pip
 
-      - name: Install dependencies
+      - name: Install project and dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e .
 
       - name: Run tests before MainNet
         run: python -m pytest -v
@@ -42,7 +42,7 @@ jobs:
           ALGORAND_DEPLOYER_MNEMONIC: ${{ secrets.ALGORAND_DEPLOYER_MNEMONIC }}
           MAINNET_DEPLOY_CONFIRMATION: ${{ github.event.inputs.confirmation }}
           ALGORAND_NETWORK: mainnet
-        run: python scripts/deploy_mainnet.py
+        run: python -m scripts.deploy_mainnet
 
       - name: Upload public deployment manifest
         uses: actions/upload-artifact@v4
