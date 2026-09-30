@@ -1,0 +1,52 @@
+name: MainNet Deploy (QALGO)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type DEPLOY_QMOOSA_ALGOFLOW_MAINNET'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ github.event.inputs.confirmation == 'DEPLOY_QMOOSA_ALGOFLOW_MAINNET' }}
+    runs-on: ubuntu-latest
+    environment: mainnet
+    concurrency:
+      group: algoflow-mainnet-deploy
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests before MainNet
+        run: python -m pytest -v
+
+      - name: Deploy QALGO ASA to Algorand MainNet
+        env:
+          ALGORAND_DEPLOYER_MNEMONIC: ${{ secrets.ALGORAND_DEPLOYER_MNEMONIC }}
+          MAINNET_DEPLOY_CONFIRMATION: ${{ github.event.inputs.confirmation }}
+          ALGORAND_NETWORK: mainnet
+        run: python scripts/deploy_mainnet.py
+
+      - name: Upload public deployment manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: algoflow-mainnet-deployment
+          path: deployment-mainnet.json
+          if-no-files-found: error
