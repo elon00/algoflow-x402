@@ -1,7 +1,7 @@
 {
   "engine": "REA_Reverse_Engineer_Anything",
   "status": "STRUCTURE_RECONSTRUCTED",
-  "analyzed_files": 46,
+  "analyzed_files": 48,
   "manifest": {
     "deployment-mainnet.json": {
       "bytes": 556
@@ -32,6 +32,12 @@
     },
     "docs\\TOKENOMICS_AND_GLOBAL_STRATEGY.md": {
       "bytes": 6883
+    },
+    "reports\\RAVEN_RSI_DIAGNOSTIC.json": {
+      "bytes": 389
+    },
+    "reports\\REA_ANALYSIS.json": {
+      "bytes": 3219
     },
     "scripts\\deploy_mainnet.py": {
       "bytes": 2983
@@ -142,5 +148,5 @@
       "bytes": 32
     }
   },
-  "timestamp": 1793979971
+  "timestamp": 1794213328
 }
