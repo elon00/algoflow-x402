@@ -45,7 +45,7 @@ jobs:
         run: python -m scripts.deploy_mainnet
 
       - name: Upload public deployment manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: algoflow-mainnet-deployment
           path: deployment-mainnet.json
